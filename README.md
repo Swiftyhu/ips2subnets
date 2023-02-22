@@ -13,7 +13,7 @@ cat <<<EOF | ./ips2subnets
 EOF
 ```
 
-It will produde the following (shorter) output:
+It will produce the following (shorter) output:
 ```
 10.0.0.0/24
 127.0.0.1
