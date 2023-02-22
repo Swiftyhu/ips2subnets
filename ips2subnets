@@ -1,0 +1,142 @@
+#!/usr/bin/perl -l
+
+###########################################
+# https://swifty.hu/scripts/ips2subnets   #
+# https://github.com/Swiftyhu/ips2subnets #
+# (c) Gaspar Lajos                        #
+###########################################
+
+use strict;
+use warnings;
+
+my @ips = ();
+
+sub uniq
+{
+	my %seen;
+	grep !$seen{$_}++, @_;
+}
+
+sub findsubnets
+{
+	my @ips = uniq(sort @_);
+	my @result;
+	my $change = 0;
+	my $curr;
+	my $currfound;
+	my $len;
+	my $next;
+	my $shorter;
+
+	while (@ips)
+	{
+		$curr = shift @ips;
+		if (@ips)
+		{
+			$len       = length($curr);
+			$next      = shift @ips;
+			$currfound = 0;
+			while (index($next, $curr) == 0)
+			{
+				$currfound++;
+				if (!@ips)
+				{
+					last;
+				}
+				$next = shift @ips;
+			}
+			if ($currfound)
+			{
+				push(@result, $curr);
+				if (index($next, $curr) != 0)
+				{
+					unshift(@ips, $next);
+				}
+				$change++;
+			} else
+			{
+				if (substr($curr, $len - 1, 1) eq '0')
+				{
+					$shorter = substr($curr, 0, $len - 1);
+					if ($next eq $shorter . '1')
+					{
+						push(@result, $shorter);
+						$change++;
+					} else
+					{
+						push(@result, $curr);
+						unshift(@ips, $next);
+					}
+				} else
+				{
+					push(@result, $curr);
+					unshift(@ips, $next);
+				}
+			}
+		} else
+		{
+			push(@result, $curr);
+		}
+	}
+	if ($change)
+	{
+		findsubnets(@result);
+	} else
+	{
+		while (@result)
+		{
+			my $curr = shift @result;
+			my $len  = length($curr);
+			my $addr = join '.',
+			  unpack(
+					 'CCCC',
+					 pack(
+						  'N',
+						  oct(
+							  '0b'
+								. substr(
+									 $curr . '00000000000000000000000000000000',
+									 0, 32
+								)
+							 )
+						 )
+					);
+			print $addr. ($len == 32 ? '' : '/' . $len);
+		}
+	}
+}
+
+while (my $line = <>)
+{
+	$line =~ s/^\s+|\s+$//g;
+	my @octets = split(/\.|\//, $line);
+	if ($line =~
+		m/^([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])$/
+	   )
+	{
+		push(
+			 @ips,
+			 sprintf(
+					 "%08B%08B%08B%08B",
+					 $octets[0], $octets[1], $octets[2], $octets[3]
+					)
+			);
+	} elsif ($line =~
+		m/^([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])\.([01]?\d\d?|2[0-4]\d|25[0-5])\/([012]?\d|3[0-2])$/
+	  )
+	{
+		push(
+			 @ips,
+			 substr(
+					sprintf(
+							"%08B%08B%08B%08B",
+							$octets[0], $octets[1], $octets[2], $octets[3]
+						   ),
+					0,
+					int($octets[4])
+				   )
+			);
+	}
+}
+
+findsubnets(@ips);
