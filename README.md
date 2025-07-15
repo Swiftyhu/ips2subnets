@@ -1,6 +1,5 @@
 # ips2subnets
 Perl script to help generate a shorter list from an IPv4 list, possibly using subnets.
-
 # Example
 ```
 cat <<<EOF | ./ips2subnets
